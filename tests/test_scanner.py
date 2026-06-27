@@ -23,6 +23,8 @@ def test_e2e_repo(tmp_path: Path):
     secret_file.write_text('OPENAI_API_KEY = "sk-zzz111222333444555"\n')
     # initialize git so CLI can use status
     subprocess.check_call(["git", "init"], cwd=repo)
+    subprocess.check_call(["git", "config", "user.name", "Test User"], cwd=repo)
+    subprocess.check_call(["git", "config", "user.email", "test@example.com"], cwd=repo)
     subprocess.check_call(["git", "add", "."], cwd=repo)
     subprocess.check_call(["git", "commit", "-m", "init"], cwd=repo, stdout=subprocess.DEVNULL)
 
