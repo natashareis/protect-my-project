@@ -97,6 +97,7 @@ This runs `pmpp scan --mode audit` before commits (non-blocking by default).
 **Automation and safety
 
 - pmpp will never modify your target repository without explicit confirmation. All suggested changes are printed; the CLI will prompt before applying them (for example, `--autogitignore` shows suggestions and prompts before updating `.gitignore`, and installing a pre-commit hook requires confirmation).
+- Scripts such as `scripts/run_scan_direct.py` and `scripts/run_scan_filtered.py` print JSON reports to stdout by default and will only write a report file when `--out` is explicitly provided. In CI you can redirect output to a file (for example, `pmpp scan --mode audit --format json > pmpp-results.json`).
 - Use `--dry-run` on `scan` or `install-hook` to guarantee no writes; the CLI will only show what would change.
 - Use `--scope changed` (default) to limit scans to changed/uncommitted files for fast, low-cost runs.
 - For LLM-powered suggestions (planned), configure an adapter and set `--llm=openai|anthropic|local`.

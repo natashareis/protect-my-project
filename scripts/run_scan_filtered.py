@@ -16,7 +16,7 @@ EXTRA_EXCLUDE_PATTERNS = ("pmpp-*.json", "pmpp-results-*.json", "pmpp_self_*.jso
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--target", required=True)
-    parser.add_argument("--out", default="pmpp-results-filtered.json")
+    parser.add_argument("--out", default=None, help="If provided, write JSON report to this file; otherwise print to stdout")
     parser.add_argument("--no-exclude", action="store_true", help="Do not exclude common dependency folders")
     args = parser.parse_args()
 
@@ -45,8 +45,12 @@ def main():
         "summary": {"clean": len(findings) == 0, "message": "Human review recommended."}
     }
 
-    Path(args.out).write_text(json.dumps(data, default=str, indent=2), encoding="utf-8")
-    print(f"Wrote {args.out} (findings={len(findings)})")
+    out_path = args.out
+    if out_path:
+        Path(out_path).write_text(json.dumps(data, default=str, indent=2), encoding="utf-8")
+        print(f"Wrote {out_path} (findings={len(findings)})")
+    else:
+        print(json.dumps(data, default=str, indent=2))
     # print concise top-file summary
     files_count = Counter([str(f.path) for f in findings])
     top = files_count.most_common(5)

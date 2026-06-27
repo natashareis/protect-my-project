@@ -4,3 +4,7 @@ pmpp-results-*.json
 
 # Pytest cache
 .pytest_cache/
+ 
+# Python bytecode and caches
+__pycache__/
+*.pyc

@@ -6,6 +6,10 @@ on:
 jobs:
   pmpp:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,23 +30,68 @@ jobs:
           cat pmpp-results.json
 
       - name: Post results as PR comment (if findings)
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const body = fs.readFileSync('pmpp-results.json','utf8');
-            let data = {};
-            try { data = JSON.parse(body); } catch (e) { core.setFailed('Failed to parse pmpp-results.json'); }
-            const count = (data.findings && data.findings.length) || 0;
-            if (count > 0) {
-              const short = JSON.stringify({ findings: data.findings.slice(0,10), count }, null, 2);
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: `pmpp found ${count} issue(s) in this PR. Summary:\n\n\`\`\`json\n${short}\n\`\`\`\n\nFull results attached to the workflow run artifacts.`
-              });
-              core.setFailed(`pmpp found ${count} issues`);
-            } else {
-              core.info('pmpp found no issues');
-            }
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import os, json, sys, urllib.request
+
+          try:
+              with open(os.environ['GITHUB_EVENT_PATH'], 'r', encoding='utf-8') as f:
+                  ev = json.load(f)
+          except Exception as e:
+              print('Failed to read event payload:', e)
+              sys.exit(1)
+
+          # determine PR number
+          pr = ev.get('number') or (ev.get('pull_request') or {}).get('number')
+          if not pr:
+              print('No pull request number found in event payload; skipping comment')
+              sys.exit(0)
+
+          try:
+              data = json.load(open('pmpp-results.json','r', encoding='utf-8'))
+          except Exception as e:
+              print('Failed to read pmpp-results.json:', e)
+              sys.exit(1)
+
+          count = len(data.get('findings', []))
+          if count == 0:
+              print('pmpp found no issues')
+              sys.exit(0)
+
+          short = json.dumps({ 'findings': data.get('findings')[:10], 'count': count }, indent=2)
+            run_url = os.environ.get('GITHUB_SERVER_URL', 'https://github.com') + f"/{owner}/{repo}/actions/runs/" + os.environ.get('GITHUB_RUN_ID', '')
+            body = (
+              f"pmpp found {count} potential issue(s) in this PR.\n\n"
+              f"Summary:\n\n```json\n{short}\n```\n\n"
+              f"Full results and artifacts: {run_url}"
+            )
+
+          owner, repo = os.environ['GITHUB_REPOSITORY'].split('/')
+          url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr}/comments"
+          token = os.environ.get('GITHUB_TOKEN')
+          if not token:
+              print('GITHUB_TOKEN not available; cannot post comment')
+              sys.exit(1)
+
+          req = urllib.request.Request(url, data=json.dumps({'body': body}).encode('utf-8'),
+                                       headers={
+                                           'Authorization': f'bearer {token}',
+                                           'Accept': 'application/vnd.github.v3+json',
+                                           'Content-Type': 'application/json'
+                                       })
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  print('Comment posted, status', resp.status)
+          except Exception as e:
+              print('Failed to post comment:', e)
+              sys.exit(1)
+
+          # fail the job to indicate findings
+          print(f'pmpp found {count} issues; failing the job')
+          sys.exit(1)
+          PY
