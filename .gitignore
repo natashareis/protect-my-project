@@ -2,6 +2,11 @@
 pmpp-*.json
 pmpp-results-*.json
 
+# Build artifacts (never commit these)
+dist/
+build/
+*.egg-info/
+
 # Pytest cache
 .pytest_cache/
  

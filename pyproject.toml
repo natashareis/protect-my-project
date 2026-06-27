@@ -1,10 +1,24 @@
 [project]
 name = "protect-my-project"
-version = "0.1.0"
+version = "0.1.1"
 description = "A repo scanner that suggests gitignore entries, env var extraction, and detects exposed keys."
 requires-python = ">=3.9"
 readme = "README.md"
 license = { text = "MIT" }
+authors = [{ name = "Natasha Reis" }]
+keywords = ["security", "secrets", "cli", "devtools", "gitignore"]
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: MIT License",
+	"Topic :: Security",
+]
+dependencies = [
+	"click>=8.0",
+	"tomli>=2.0; python_version < '3.11'",
+]
+
+[project.urls]
+Homepage = "https://github.com/natashareis/protect-my-project"
 
 [project.scripts]
 pmpp = "pmpp.cli:main"
@@ -12,3 +26,6 @@ pmpp = "pmpp.cli:main"
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pmpp*"]

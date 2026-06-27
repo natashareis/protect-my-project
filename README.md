@@ -112,18 +112,44 @@ This repository also includes a simple GitHub Actions workflow in [.github/workf
 
 ## Using pmpp in your own projects
 
-`pmpp` is designed to be used as a dependency in your own repositories. Here are two approaches:
+`pmpp` is available on PyPI. Install it with pip:
+
+```bash
+pip install protect-my-project
+```
+
+Then use it right away:
+
+```bash
+# Interactive scan (default)
+pmpp scan --mode interactive
+
+# Audit mode for CI (JSON output)
+pmpp scan --mode audit --format json
+```
+
+`pmpp` is designed to be used as a dev dependency in your own repositories. Here are two approaches:
 
 **Approach 1: Add pmpp as a dev dependency**
 
-Install pmpp in your project from a local checkout:
+Add to your `dev-requirements.txt`:
 
-```bash
-# From your project root
-python -m pip install -e /path/to/protect-my-project
+```
+protect-my-project>=0.1.0
 ```
 
-Then add it to your `dev-requirements.txt` or `pyproject.toml` dev dependencies when you want to standardize the setup.
+Or in `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+dev = ["protect-my-project>=0.1.0"]
+```
+
+Install:
+
+```bash
+pip install protect-my-project
+```
 
 Run locally:
 
@@ -156,9 +182,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install pmpp
-        run: |
-          python -m pip install -e /path/to/protect-my-project
-          python -m pip install -r /path/to/protect-my-project/requirements.txt
+        run: pip install protect-my-project
       
       - name: Run security scan
         run: pmpp scan --mode audit --format json > pmpp-results.json
@@ -185,7 +209,7 @@ jobs:
 
 This workflow:
 - Runs on every PR and can be manually triggered
-- Installs pmpp from your local path
+- Installs pmpp from PyPI
 - Scans the codebase in audit mode
 - Blocks the merge if vulnerabilities are found
 - Stores results as an artifact for audit trails
