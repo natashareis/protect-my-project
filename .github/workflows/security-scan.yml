@@ -1,0 +1,72 @@
+name: Security Scan & Tests (pmpp)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest pytest-cov
+          python -m pip install -e .
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=pmpp --cov-report=term-missing
+        continue-on-error: false
+
+      - name: Run security scan
+        run: |
+          pmpp scan --mode audit --format json > pmpp-results.json
+          cat pmpp-results.json
+
+      - name: Create job summary
+        if: always()
+        run: |
+          echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          with open('pmpp-results.json') as f:
+              results = json.load(f)
+          summary = results.get('summary', {})
+          message = summary.get('message', 'Scan completed')
+          findings_count = len(results.get('findings', []))
+          
+          if findings_count == 0:
+              echo '✅ ' + message >> $GITHUB_STEP_SUMMARY
+          else:
+              echo '⚠️ Found ' + str(findings_count) + ' potential issues' >> $GITHUB_STEP_SUMMARY
+              echo '- Please review findings in the job output' >> $GITHUB_STEP_SUMMARY
+          "
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pmpp-scan-results
+          path: pmpp-results.json
+          retention-days: 30
+
+      - name: Fail if vulnerabilities found
+        run: |
+          python -c "
+          import json
+          with open('pmpp-results.json') as f:
+              results = json.load(f)
+          if not results.get('summary', {}).get('clean', True):
+              print('❌ Security vulnerabilities found!')
+              exit(1)
+          print('✅ No vulnerabilities found')
+          "

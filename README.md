@@ -1,0 +1,243 @@
+# Protect My Project (pmpp)
+
+Small tool to scan a repository for exposed secrets, suggest `.gitignore` entries, and recommend extraction of hard-coded values to environment variables.
+
+Features
+- Heuristics-based secret detection (regex + base64 entropy)
+- Interactive audit mode with per-item confirmation
+- Optional `.gitignore` auto-append with explicit `--autogitignore`
+- Pre-commit hook installer (`pmpp install-hook`) that runs in audit mode
+
+Quickstart
+
+Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Usage examples
+
+```bash
+# Interactive scan (default)
+pmpp scan --mode interactive
+
+# Audit (read-only), JSON output for CI
+pmpp scan --mode audit --format json
+
+# Add suggested .gitignore entries (explicit)
+pmpp scan --mode interactive --autogitignore
+
+# Install the audit pre-commit hook (opt-in)
+pmpp install-hook
+```
+
+Advanced flags (low-cost LLM help and fast options)
+
+```bash
+# Fast: only scan changed files (default behavior), no LLM calls
+pmpp scan --fast
+
+# Use LLM batching to get suggestions for ambiguous items (low token usage)
+# Note: LLM calls are optional and off by default for privacy and cost control.
+pmpp scan --llm suggest --llm-budget 1
+
+# Combine: audit + LLM suggestions (batched)
+pmpp scan --mode audit --llm suggest --llm-budget 1 --format json
+```
+
+Config file example (`.pmpp.toml` at repo root)
+
+```toml
+[llm]
+provider = "suggest"  # none | suggest
+budget = 1
+
+[ignore]
+enabled = ["node", "python"]
+```
+
+Behaviour notes
+- Default mode is `interactive` and uses heuristics-only (no network calls).
+- `--llm suggest` batches ambiguous items into a single, low-cost suggestion call.
+- Use `--fast` or `--scope changed` to limit scanning to changed files for speed and low token usage.
+
+## Getting started with pmpp
+
+**Local development**
+
+Install pmpp locally:
+
+```bash
+# From your project root (editable install)
+python -m pip install -e path/to/protect-my-project
+python -m pip install -r path/to/protect-my-project/requirements.txt
+```
+
+Run it:
+
+```bash
+# Interactive (recommended)
+pmpp scan --mode interactive
+
+# Audit mode for CI (JSON output)
+pmpp scan --mode audit --format json
+```
+
+**Pre-commit hook (opt-in)**
+
+Install a local pre-commit hook:
+
+```bash
+pmpp install-hook
+```
+
+This runs `pmpp scan --mode audit` before commits (non-blocking by default).
+
+**Automation and safety
+
+- pmpp will never modify your target repository without explicit confirmation. All suggested changes are printed; the CLI will prompt before applying them (for example, `--autogitignore` shows suggestions and prompts before updating `.gitignore`, and installing a pre-commit hook requires confirmation).
+- Use `--dry-run` on `scan` or `install-hook` to guarantee no writes; the CLI will only show what would change.
+- Use `--scope changed` (default) to limit scans to changed/uncommitted files for fast, low-cost runs.
+- For LLM-powered suggestions (planned), configure an adapter and set `--llm=openai|anthropic|local`.
+
+**Run tests locally**
+
+```bash
+pytest -q
+```
+
+## Using pmpp in your own projects
+
+`pmpp` is designed to be used as a dependency in your own repositories. Here are two approaches:
+
+**Approach 1: Add pmpp as a dev dependency**
+
+Install pmpp in your project:
+
+```bash
+# From your project root
+python -m pip install -e path/to/protect-my-project
+# or if published to PyPI:
+python -m pip install protect-my-project
+```
+
+Then add it to your `dev-requirements.txt` or `pyproject.toml` dev dependencies.
+
+Run locally:
+
+```bash
+pmpp scan --mode interactive
+```
+
+Run in CI (see GitHub Actions example below).
+
+**Approach 2: Use pmpp GitHub Action workflow**
+
+Create `.github/workflows/security-scan.yml` in your repository:
+
+```yaml
+name: Security Scan with pmpp
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install pmpp
+        run: |
+          python -m pip install -e path/to/protect-my-project
+          python -m pip install -r path/to/protect-my-project/requirements.txt
+      
+      - name: Run security scan
+        run: pmpp scan --mode audit --format json > pmpp-results.json
+      
+      - name: Check results
+        run: |
+          python -c "
+          import json
+          with open('pmpp-results.json') as f:
+              results = json.load(f)
+          if not results.get('summary', {}).get('clean', True):
+              print('❌ Security vulnerabilities found!')
+              exit(1)
+          print('✅ No vulnerabilities found')
+          "
+      
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pmpp-scan-results
+          path: pmpp-results.json
+```
+
+This workflow:
+- Runs on every PR and can be manually triggered
+- Installs pmpp from your local path
+- Scans the codebase in audit mode
+- Blocks the merge if vulnerabilities are found
+- Stores results as an artifact for audit trails
+
+## Using pmpp as an agent locally and in CI
+
+**VS Code (interactive)**
+
+1. Open the workspace in VS Code.
+2. Run `pmpp: interactive scan` from the Command Palette (`Ctrl+Shift+P` → "Tasks: Run Task").
+3. Or use the keybinding `Ctrl+Alt+Shift+P` (after enabling via `python scripts/keybinding_helper.py --apply`).
+
+**Copilot Chat + pmpp**
+
+Run the scan locally, then paste results into Copilot Chat for analysis:
+
+```bash
+pmpp scan --mode interactive --scope changed
+```
+
+**VS Code keybinding helper (opt-in)**
+
+```bash
+python scripts/keybinding_helper.py --apply
+```
+
+This copies `.vscode/keybindings.example.json` to your user settings (with confirmation).
+
+Scan another project without installing
+
+If you don't want to add `pyproject.toml` or `setup.py` to a target project, run the scanner from this repository against any target path using the portable runner script. From this repo root:
+
+```bash
+# run the runner against another repository (no install required in the target)
+python scripts/scan_target.py --target C:/path/to/other-repo --mode audit --scope all --format json
+```
+
+Alternatively you can invoke the local module directly (also from this repo root):
+
+```bash
+python -m pmpp.cli scan --root C:/path/to/other-repo --mode audit --scope all --format json
+```
+
+Both approaches let you scan arbitrary repositories without modifying them.
+
+Notes
+- The GitHub action uses heuristics-only scanning by default to avoid external network calls and token usage.
+- To enable LLM suggestions in CI you must wire an adapter and provide credentials securely via repository secrets (not recommended by default).
+
+Development
+
+Run unit tests:
+
+```bash
+pytest -q
+```

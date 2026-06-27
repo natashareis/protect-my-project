@@ -1,0 +1,8 @@
+[
+  {
+    "key": "ctrl+alt+shift+p",
+    "command": "workbench.action.tasks.runTask",
+    "args": "pmpp: interactive scan",
+    "when": "editorTextFocus"
+  }
+]

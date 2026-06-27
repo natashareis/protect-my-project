@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "pmpp: interactive scan",
+      "type": "shell",
+      "command": "pmpp scan --mode interactive --scope changed",
+      "problemMatcher": []
+    },
+    {
+      "label": "pmpp: audit (CI)",
+      "type": "shell",
+      "command": "pmpp scan --mode audit --scope all --format json > pmpp-results.json",
+      "problemMatcher": []
+    }
+  ]
+}

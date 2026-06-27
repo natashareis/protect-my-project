@@ -1,0 +1,6 @@
+# pmpp report files (do not commit scan outputs)
+pmpp-*.json
+pmpp-results-*.json
+
+# Pytest cache
+.pytest_cache/
