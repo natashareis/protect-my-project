@@ -1,15 +1,14 @@
 [project]
 name = "protect-my-project"
-version = "0.1.1"
+version = "0.1.2"
 description = "A repo scanner that suggests gitignore entries, env var extraction, and detects exposed keys."
 requires-python = ">=3.9"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Natasha Reis" }]
 keywords = ["security", "secrets", "cli", "devtools", "gitignore"]
 classifiers = [
 	"Programming Language :: Python :: 3",
-	"License :: OSI Approved :: MIT License",
 	"Topic :: Security",
 ]
 dependencies = [
