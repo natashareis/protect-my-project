@@ -66,12 +66,12 @@ Behaviour notes
 
 **Local development**
 
-Install pmpp locally:
+Install pmpp locally from this repository:
 
 ```bash
-# From your project root (editable install)
-python -m pip install -e path/to/protect-my-project
-python -m pip install -r path/to/protect-my-project/requirements.txt
+# From the repository root
+python -m pip install -e .
+python -m pip install -r requirements.txt
 ```
 
 Run it:
@@ -116,16 +116,14 @@ This repository also includes a simple GitHub Actions workflow in [.github/workf
 
 **Approach 1: Add pmpp as a dev dependency**
 
-Install pmpp in your project:
+Install pmpp in your project from a local checkout:
 
 ```bash
 # From your project root
-python -m pip install -e path/to/protect-my-project
-# or if published to PyPI:
-python -m pip install protect-my-project
+python -m pip install -e /path/to/protect-my-project
 ```
 
-Then add it to your `dev-requirements.txt` or `pyproject.toml` dev dependencies.
+Then add it to your `dev-requirements.txt` or `pyproject.toml` dev dependencies when you want to standardize the setup.
 
 Run locally:
 
@@ -159,8 +157,8 @@ jobs:
       
       - name: Install pmpp
         run: |
-          python -m pip install -e path/to/protect-my-project
-          python -m pip install -r path/to/protect-my-project/requirements.txt
+          python -m pip install -e /path/to/protect-my-project
+          python -m pip install -r /path/to/protect-my-project/requirements.txt
       
       - name: Run security scan
         run: pmpp scan --mode audit --format json > pmpp-results.json
