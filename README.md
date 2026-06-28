@@ -10,10 +10,10 @@ Features
 
 Quickstart
 
-Install dependencies:
+Install:
 
 ```bash
-python -m pip install -r requirements.txt
+pip install protect-my-project
 ```
 
 Usage examples
@@ -64,7 +64,34 @@ Behaviour notes
 
 ## Getting started with pmpp
 
-**Local development**
+**Install from PyPI**
+
+```bash
+pip install protect-my-project
+```
+
+**Approach 1: Add pmpp as a dev dependency**
+
+Add to your `dev-requirements.txt`:
+
+```
+protect-my-project
+```
+
+Or in `pyproject.toml`:
+
+```toml
+[project.optional-dependencies]
+dev = ["protect-my-project"]
+```
+
+Install:
+
+```bash
+pip install -e ".[dev]"
+```
+
+**Approach 2: Local development (from source)**
 
 Install pmpp locally from this repository:
 
@@ -135,14 +162,14 @@ pmpp scan --mode audit --format json
 Add to your `dev-requirements.txt`:
 
 ```
-protect-my-project>=0.1.0
+protect-my-project
 ```
 
 Or in `pyproject.toml`:
 
 ```toml
 [project.optional-dependencies]
-dev = ["protect-my-project>=0.1.0"]
+dev = ["protect-my-project"]
 ```
 
 Install:

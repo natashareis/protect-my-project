@@ -17,9 +17,14 @@ def get_changed_files(root: Path) -> List[Path]:
         out = subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True)
         files = []
         for line in out.splitlines():
-            parts = line.strip().split(maxsplit=1)
-            if len(parts) == 2:
-                files.append(root / parts[1])
+            if len(line) < 4:
+                continue
+            # porcelain format: XY<space><path>; XY is always 2 chars
+            path_part = line[3:]
+            # renamed files: "old -> new" — take only the new path
+            if " -> " in path_part:
+                path_part = path_part.split(" -> ")[-1]
+            files.append(root / path_part)
         return files
     except Exception:
         return list_repo_files(root)

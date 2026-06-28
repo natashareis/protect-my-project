@@ -28,16 +28,10 @@ DEFAULT_IGNORE_PATTERNS = [
     {"type": "suffix", "value": ".jar", "suggest": "*.jar"},
     {"type": "dir", "value": ".gradle", "suggest": ".gradle/"},
 
-    # Rust
-    {"type": "dir", "value": "target", "suggest": "target/"},
-
-    # Go
+    # Rust / Go
     {"type": "dir", "value": "vendor", "suggest": "vendor/"},
     {"type": "dir", "value": "bin", "suggest": "bin/"},
     {"type": "suffix", "value": ".exe", "suggest": "*.exe"},
-
-    # Frontend / bundlers
-    {"type": "dir", "value": "dist", "suggest": "dist/"},
 
     # IDEs / editors
     {"type": "dir", "value": ".idea", "suggest": ".idea/"},
