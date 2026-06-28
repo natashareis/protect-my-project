@@ -8,7 +8,42 @@ Features
 - Optional `.gitignore` auto-append with explicit `--autogitignore`
 - Pre-commit hook installer (`pmpp install-hook`) that runs in audit mode
 
-Quickstart
+## What gets scanned vs skipped
+
+pmpp only scans **source files**. Build outputs, dependency trees, and runtime data are pruned before scanning to keep runs fast and results meaningful.
+
+### Directories that are never traversed
+
+| Stack | Skipped directories |
+|---|---|
+| **Node / JS / TS** | `node_modules/`, `dist/`, `build/`, `out/`, `.cache/`, `.turbo/`, `.nx/`, `.nyc_output/` |
+| **React / Next.js** | `.next/`, `out/` |
+| **Angular** | `.angular/` |
+| **Vue / Nuxt** | `.nuxt/`, `.output/` |
+| **SvelteKit** | `.svelte-kit/` |
+| **Vite / Parcel / Storybook** | `.vite/`, `.parcel-cache/`, `storybook-static/` |
+| **PHP (Laravel / Symfony / Composer)** | `vendor/`, `storage/`, `var/` |
+| **Ruby / Rails / Bundler** | `.bundle/`, `tmp/`, `log/`, `.sass-cache/` |
+| **Python (Django / Flask / FastAPI)** | `__pycache__/`, `.venv/`, `venv/`, `env/`, `.pytest_cache/`, `htmlcov/`, `staticfiles/`, `media/`, `instance/`, `.eggs/` |
+| **Java / JVM (Spring / Quarkus / Kotlin)** | `target/`, `.gradle/`, `.m2/` |
+| **.NET / C# / F#** | `obj/`, `packages/`, `TestResults/` |
+| **Rust** | `target/` |
+| **Go** | `vendor/` |
+| **Infrastructure (Terraform / CDK / Serverless / Pulumi)** | `.terraform/`, `.serverless/`, `cdk.out/`, `.pulumi/` |
+| **General** | `coverage/`, `logs/`, `.idea/`, `.vscode/`, `.git/` |
+
+### File types that are always skipped
+
+- **Lock / checksum files** — `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`, `composer.lock`, `Gemfile.lock`, `Cargo.lock`, `go.sum`, `mix.lock`, `pubspec.lock`, `packages.lock.json`
+- **Compiled / binary** — `.class`, `.jar`, `.war`, `.ear`, `.pyc`, `.exe`, `.dll`, `.so`, `.dylib`, `.o`, `.a`, `.nupkg`
+- **Minified / generated** — `.min.js`, `.min.css`, `.map`
+- **Media / fonts** — images, audio, video, `.woff`, `.ttf`, `.svg`, etc.
+- **Archives** — `.zip`, `.gz`, `.tar`, `.bz2`, `.7z`, `.rar`
+- **Database files** — `.db`, `.sqlite`, `.sqlite3`, `.tfstate`
+- **Log files** — `.log`
+- **Files larger than 512 KB**
+
+
 
 Install:
 

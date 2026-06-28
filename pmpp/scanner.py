@@ -14,6 +14,83 @@ from typing import Iterable, List, Optional, Tuple
 
 from pmpp.utils.patterns import DEFAULT_IGNORE_PATTERNS
 
+# Directories to never descend into during a full-repo scan.
+# Built from patterns.py "dir" entries plus extras that have no gitignore suggestion.
+_SKIP_DIRS: frozenset[str] = frozenset(
+    {p["value"] for p in DEFAULT_IGNORE_PATTERNS if p.get("type") == "dir"}
+    | {
+        ".git",
+        # Python venv variants
+        "venv", "env", ".env",
+        # Misc tooling caches
+        ".tox", ".mypy_cache", ".ruff_cache", ".hypothesis",
+        # Rust: target already in patterns; extra Go cache
+        ".gomodcache",
+        # Ruby: gems outside vendor
+        ".gem",
+        # General
+        "bin",  # compiled outputs (Go, Rust CLI, .NET)
+    }
+)
+
+# File suffixes that are always skipped (binary, compiled, lock, minified, media).
+# Built from patterns.py "suffix" entries plus file types that are never source.
+_SKIP_SUFFIXES: frozenset[str] = frozenset(
+    {p["value"] for p in DEFAULT_IGNORE_PATTERNS if p.get("type") == "suffix"}
+    | {
+        # Lock files with a recognisable suffix
+        ".lock",
+        # Source maps already in patterns.py (.map)
+        # Minified already in patterns.py (.min.js / .min.css)
+        # Images
+        ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp", ".bmp", ".tiff", ".avif",
+        # Fonts
+        ".svg", ".woff", ".woff2", ".ttf", ".eot", ".otf",
+        # Documents / archives
+        ".pdf", ".zip", ".gz", ".tar", ".bz2", ".xz", ".7z", ".rar",
+        # Database / binary blobs
+        ".bin", ".dll", ".so", ".dylib", ".o", ".a", ".db", ".sqlite", ".sqlite3",
+        # Media
+        ".mp3", ".mp4", ".wav", ".ogg", ".flac", ".avi", ".mkv", ".mov",
+        # Terraform state (can be large, contains infra metadata not inline secrets)
+        ".tfstate",
+    }
+)
+
+# Files with these exact names are skipped — lock / checksum files whose
+# extension doesn't uniquely identify them.
+_SKIP_NAMES: frozenset[str] = frozenset({
+    # Node
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    # Python
+    "poetry.lock",
+    "Pipfile.lock",
+    # PHP
+    "composer.lock",
+    # Ruby
+    "Gemfile.lock",
+    # Go
+    "go.sum",
+    # Rust
+    "Cargo.lock",
+    # Elixir
+    "mix.lock",
+    # Dart / Flutter
+    "pubspec.lock",
+    # .NET
+    "packages.lock.json",
+    # Chef
+    "Berksfile.lock",
+})
+
+# Maximum file size to scan (512 KB); larger files are skipped
+_MAX_FILE_BYTES: int = 512 * 1024
+
+# Maximum snippet length stored in a Finding
+_MAX_SNIPPET: int = 200
+
 
 @dataclass
 class Finding:
@@ -71,16 +148,18 @@ def find_secrets_in_text(path: Path, text: str) -> List[Finding]:
     """Return list of secret-like findings in text."""
     findings: List[Finding] = []
     for i, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()[:_MAX_SNIPPET]
         if PEM_HEADER.search(line):
-            findings.append(Finding(path, i, line.strip(), "pem", "PEM private key header"))
+            findings.append(Finding(path, i, stripped, "pem", "PEM private key header"))
         for name, pattern in SECRET_PATTERNS:
             if pattern.search(line):
-                findings.append(Finding(path, i, line.strip(), "secret", name))
+                findings.append(Finding(path, i, stripped, "secret", name))
         # base64 check for long tokens
         tokens = re.findall(r"[A-Za-z0-9+/=]{32,}", line)
         for tok in tokens:
             if looks_like_base64(tok):
                 findings.append(Finding(path, i, tok[:80], "secret", "base64-like"))
+    return findings
     return findings
 
 
@@ -128,11 +207,36 @@ def scan_paths(paths: Iterable[Path]) -> List[Finding]:
 
 
 def list_repo_files(root: Path) -> List[Path]:
-    """Return list of files under root, excluding .git directory."""
+    """Return list of scannable files under root.
+
+    Skips:
+    - build/dependency directories (node_modules, __pycache__, .venv, dist, …)
+    - binary, compiled, lock, and minified file types
+    - files larger than _MAX_FILE_BYTES
+    """
     files: List[Path] = []
-    for p in root.rglob("*"):
-        if ".git" in p.parts:
-            continue
-        if p.is_file():
-            files.append(p)
+
+    def _walk(directory: Path) -> None:
+        try:
+            entries = list(directory.iterdir())
+        except PermissionError:
+            return
+        for entry in entries:
+            if entry.is_dir():
+                if entry.name not in _SKIP_DIRS:
+                    _walk(entry)
+            elif entry.is_file():
+                if entry.name in _SKIP_NAMES:
+                    continue
+                # Check every suffix component so ".min.js" is caught via ".js" check too
+                if any(entry.name.endswith(s) for s in _SKIP_SUFFIXES):
+                    continue
+                try:
+                    if entry.stat().st_size > _MAX_FILE_BYTES:
+                        continue
+                except OSError:
+                    continue
+                files.append(entry)
+
+    _walk(root)
     return files
